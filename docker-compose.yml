@@ -14,7 +14,7 @@ services:
     volumes:
       - openclaw-config:/home/node/.openclaw
       - openclaw-auth:/home/node/.config/openclaw
-      - ./openclaw-skill/job_tracker.md:/home/node/.openclaw/skills/job_tracker.md:ro
+      - ./openclaw-skill/job_tracker.md:/home/node/.openclaw/skills/job_tracker.md:z
     ports:
       - "18789:18789"
     depends_on:
@@ -26,6 +26,8 @@ services:
     volumes:
       - openclaw-config:/home/node/.openclaw
       - openclaw-auth:/home/node/.config/openclaw
+    environment:
+      - OPENCLAW_GATEWAY_URL=ws://openclaw-gateway:18789
     depends_on:
       - openclaw-gateway
     profiles:
