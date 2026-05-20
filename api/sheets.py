@@ -7,7 +7,7 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-from models import Candidature, CandidatureCreate, Statut
+from api.models import Candidature, CandidatureCreate, Statut
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",

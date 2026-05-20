@@ -1,0 +1,36 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./credentials.json:/app/credentials.json:z
+      - ./token.json:/app/token.json:z
+      - ./.env:/app/.env:z
+    restart: unless-stopped
+
+  openclaw-gateway:
+    image: ghcr.io/openclaw/openclaw:latest
+    volumes:
+      - openclaw-config:/home/node/.openclaw
+      - openclaw-auth:/home/node/.config/openclaw
+      - ./openclaw-skill/job_tracker.md:/home/node/.openclaw/skills/job_tracker.md:ro
+    ports:
+      - "18789:18789"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  openclaw-cli:
+    image: ghcr.io/openclaw/openclaw:latest
+    volumes:
+      - openclaw-config:/home/node/.openclaw
+      - openclaw-auth:/home/node/.config/openclaw
+    depends_on:
+      - openclaw-gateway
+    profiles:
+      - cli
+
+volumes:
+  openclaw-config:
+  openclaw-auth:

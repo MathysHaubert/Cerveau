@@ -6,9 +6,9 @@ import anthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 
-import gmail as gmail_module
-import sheets
-from models import (
+import api.gmail as gmail_module
+import api.sheets as sheets
+from api.models import (
     Candidature,
     CandidatureCreate,
     CandidatureUpdate,

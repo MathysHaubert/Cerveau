@@ -4,8 +4,8 @@ from email.mime.text import MIMEText
 
 from googleapiclient.discovery import build
 
-from sheets import get_credentials
-from models import Candidature, DraftResponse
+from api.sheets import get_credentials
+from api.models import Candidature, DraftResponse
 
 
 def get_gmail_service():
