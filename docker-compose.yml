@@ -15,6 +15,7 @@ services:
       - openclaw-config:/home/node/.openclaw
       - openclaw-auth:/home/node/.config/openclaw
       - ./openclaw-skill/job_tracker.md:/home/node/.openclaw/skills/job_tracker.md:z
+      - ~/.claude/.credentials.json:/home/node/.claude/.credentials.json:ro,z
     ports:
       - "18789:18789"
     depends_on:
