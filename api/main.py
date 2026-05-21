@@ -15,6 +15,7 @@ from api.models import (
     DraftResponse,
     PipelineEntry,
     RelanceAlert,
+    ReplyAlert,
     Statut,
 )
 
@@ -89,6 +90,15 @@ def get_relances():
             contact_email=c.contact_email,
         ))
     return alerts
+
+
+@app.get("/candidatures/replies", response_model=list[ReplyAlert])
+def get_replies():
+    active = [
+        c for c in sheets.list_candidatures()
+        if c.statut in (Statut.envoye, Statut.relance) and c.contact_email
+    ]
+    return gmail_module.check_replies(active)
 
 
 @app.get("/candidatures/{candidature_id}", response_model=Candidature)

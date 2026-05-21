@@ -5,7 +5,7 @@ from email.mime.text import MIMEText
 from googleapiclient.discovery import build
 
 from api.sheets import get_credentials
-from api.models import Candidature, DraftResponse
+from api.models import Candidature, DraftResponse, ReplyAlert
 
 
 def get_gmail_service():
@@ -38,6 +38,49 @@ def create_draft(candidature: Candidature, body: str) -> DraftResponse:
         gmail_link=gmail_link,
         message=f"Brouillon créé pour {candidature.entreprise} ({candidature.poste})",
     )
+
+
+def check_replies(candidatures: list[Candidature]) -> list[ReplyAlert]:
+    service = get_gmail_service()
+    alerts = []
+
+    for c in candidatures:
+        if not c.contact_email:
+            continue
+
+        results = service.users().messages().list(
+            userId="me",
+            q=f"from:{c.contact_email} in:inbox",
+            maxResults=1,
+        ).execute()
+
+        messages = results.get("messages", [])
+        if not messages:
+            continue
+
+        msg = service.users().messages().get(
+            userId="me",
+            id=messages[0]["id"],
+            format="metadata",
+            metadataHeaders=["Subject", "From"],
+        ).execute()
+
+        headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
+        subject = headers.get("Subject", "(no subject)")
+        snippet = msg.get("snippet", "")
+        gmail_link = f"https://mail.google.com/mail/u/0/#inbox/{messages[0]['id']}"
+
+        alerts.append(ReplyAlert(
+            id=c.id,
+            entreprise=c.entreprise,
+            poste=c.poste,
+            contact_email=c.contact_email,
+            subject=subject,
+            snippet=snippet,
+            gmail_link=gmail_link,
+        ))
+
+    return alerts
 
 
 def generate_email_body(candidature: Candidature, llm_client=None) -> str:

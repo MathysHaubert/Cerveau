@@ -12,6 +12,7 @@ from api.models import Candidature, CandidatureCreate, Statut
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/gmail.compose",
+    "https://www.googleapis.com/auth/gmail.readonly",
 ]
 
 SHEET_HEADERS = [

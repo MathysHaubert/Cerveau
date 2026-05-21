@@ -113,6 +113,8 @@ Copy `openclaw-skill/job_tracker.md` to your OpenClaw skills directory and updat
 
 ### 1. Google Cloud Setup
 
+> Full step-by-step guide (OAuth consent screen, scopes, common errors): [docs/google-setup.md](docs/google-setup.md)
+
 1. Create a project at [console.cloud.google.com](https://console.cloud.google.com)
 2. Enable **Google Sheets API** and **Gmail API**
 3. Create OAuth 2.0 credentials (Desktop app) → download as `credentials.json`

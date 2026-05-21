@@ -62,3 +62,13 @@ class RelanceAlert(BaseModel):
     date_envoi: date
     jours_sans_reponse: int
     contact_email: Optional[str] = None
+
+
+class ReplyAlert(BaseModel):
+    id: int
+    entreprise: str
+    poste: str
+    contact_email: str
+    subject: str
+    snippet: str
+    gmail_link: str
