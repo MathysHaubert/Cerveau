@@ -42,42 +42,57 @@ def create_draft(candidature: Candidature, body: str) -> DraftResponse:
 
 def check_replies(candidatures: list[Candidature]) -> list[ReplyAlert]:
     service = get_gmail_service()
+
+    candidates_by_email = {
+        c.contact_email: c
+        for c in candidatures
+        if c.contact_email
+    }
+    if not candidates_by_email:
+        return []
+
+    query = "from:(" + " OR ".join(candidates_by_email.keys()) + ") in:inbox"
+    results = service.users().messages().list(
+        userId="me",
+        q=query,
+        maxResults=50,
+    ).execute()
+
+    messages = results.get("messages", [])
+    if not messages:
+        return []
+
     alerts = []
+    seen_emails = set()
 
-    for c in candidatures:
-        if not c.contact_email:
-            continue
-
-        results = service.users().messages().list(
-            userId="me",
-            q=f"from:{c.contact_email} in:inbox",
-            maxResults=1,
-        ).execute()
-
-        messages = results.get("messages", [])
-        if not messages:
-            continue
-
+    for m in messages:
         msg = service.users().messages().get(
             userId="me",
-            id=messages[0]["id"],
+            id=m["id"],
             format="metadata",
             metadataHeaders=["Subject", "From"],
         ).execute()
 
         headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
-        subject = headers.get("Subject", "(no subject)")
-        snippet = msg.get("snippet", "")
-        gmail_link = f"https://mail.google.com/mail/u/0/#inbox/{messages[0]['id']}"
+        from_header = headers.get("From", "")
 
+        matched = next(
+            (email for email in candidates_by_email if email in from_header),
+            None,
+        )
+        if not matched or matched in seen_emails:
+            continue
+
+        seen_emails.add(matched)
+        c = candidates_by_email[matched]
         alerts.append(ReplyAlert(
             id=c.id,
             entreprise=c.entreprise,
             poste=c.poste,
-            contact_email=c.contact_email,
-            subject=subject,
-            snippet=snippet,
-            gmail_link=gmail_link,
+            contact_email=matched,
+            subject=headers.get("Subject", "(no subject)"),
+            snippet=msg.get("snippet", ""),
+            gmail_link=f"https://mail.google.com/mail/u/0/#inbox/{m['id']}",
         ))
 
     return alerts
