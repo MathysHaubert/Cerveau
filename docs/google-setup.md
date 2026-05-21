@@ -1,100 +1,100 @@
 # Google API Setup — Gmail + Sheets
 
-## 1. Créer un projet Google Cloud
+## 1. Create a Google Cloud Project
 
-1. Aller sur [console.cloud.google.com](https://console.cloud.google.com)
-2. Cliquer **Select a project** → **New Project**
-3. Nom : `job-tracker` (ou ce que tu veux)
-4. Cliquer **Create**
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Click **Select a project** → **New Project**
+3. Name: `job-tracker` (anything works)
+4. Click **Create**
 
 ---
 
-## 2. Activer les APIs
+## 2. Enable APIs
 
-Dans le menu latéral : **APIs & Services → Library**
+In the sidebar: **APIs & Services → Library**
 
-Chercher et activer :
+Search and enable:
 - **Google Sheets API** → Enable
 - **Gmail API** → Enable
 
 ---
 
-## 3. Créer les credentials OAuth 2.0
+## 3. Create OAuth 2.0 Credentials
 
-### 3a. Configurer l'écran de consentement
+### 3a. Configure the consent screen
 
 **APIs & Services → OAuth consent screen**
 
-- User Type : **External** → Create
-- App name : `Job Tracker`
-- User support email : ton email
-- Developer contact : ton email
-- **Save and Continue** (les autres champs sont optionnels)
+- User Type: **External** → Create
+- App name: `Job Tracker`
+- User support email: your email
+- Developer contact: your email
+- **Save and Continue** (other fields are optional)
 
-Sur l'écran **Scopes** → Save and Continue (on les gère dans le code)
+On the **Scopes** screen → Save and Continue (scopes are handled in code)
 
-Sur l'écran **Test users** → **Add Users** → ajouter ton email Google → Save and Continue
+On the **Test users** screen → **Add Users** → add your Google email → Save and Continue
 
-> ⚠️ En mode External + non vérifié, seuls les test users peuvent s'authentifier. C'est suffisant pour un usage personnel.
+> ⚠️ In External + unverified mode, only test users can authenticate. This is enough for personal use.
 
-### 3b. Créer les credentials
+### 3b. Create the credentials
 
 **APIs & Services → Credentials → Create Credentials → OAuth client ID**
 
-- Application type : **Desktop app**
-- Name : `job-tracker-desktop`
+- Application type: **Desktop app**
+- Name: `job-tracker-desktop`
 - **Create**
 
-Cliquer **Download JSON** → renommer le fichier en `credentials.json` → placer à la racine du projet.
+Click **Download JSON** → rename the file to `credentials.json` → place it at the project root.
 
 ```
 cerveau/
-├── credentials.json   ← ici
+├── credentials.json   ← here
 ├── docker-compose.yml
 └── api/
 ```
 
 ---
 
-## 4. Créer le Google Sheet
+## 4. Create the Google Sheet
 
-1. Aller sur [sheets.google.com](https://sheets.google.com)
-2. Créer un nouveau sheet vide
-3. Copier l'ID depuis l'URL :
+1. Go to [sheets.google.com](https://sheets.google.com)
+2. Create a new blank sheet
+3. Copy the ID from the URL:
 
 ```
-https://docs.google.com/spreadsheets/d/SHEET_ID_ICI/edit
-                                        ^^^^^^^^^^^^^^
+https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
+                                        ^^^^^^^^^^^^^
 ```
 
-4. Coller dans `.env` :
+4. Paste it into `.env`:
 
 ```env
-SHEET_ID=ton_sheet_id
+SHEET_ID=your_sheet_id
 ```
 
-> Les headers sont créés automatiquement au premier appel API — ne pas les écrire manuellement.
+> Headers are created automatically on the first API call — do not write them manually.
 
 ---
 
-## 5. Configurer `.env`
+## 5. Configure `.env`
 
 ```bash
 cp .env.example .env
 ```
 
 ```env
-SHEET_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms   # exemple
+SHEET_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms   # example
 CREDENTIALS_PATH=../credentials.json
 TOKEN_PATH=../token.json
-ANTHROPIC_API_KEY=sk-ant-...   # optionnel
+ANTHROPIC_API_KEY=sk-ant-...   # optional
 ```
 
 ---
 
-## 6. Première authentification OAuth
+## 6. First OAuth Authentication
 
-Cette étape génère `token.json` qui sera réutilisé ensuite (refresh automatique).
+This step generates `token.json`, which is reused automatically afterwards (auto-refresh).
 
 ```bash
 cd api
@@ -102,34 +102,34 @@ pip install -r requirements.txt
 python -c "from api.sheets import get_credentials; get_credentials()"
 ```
 
-- Un navigateur s'ouvre
-- Se connecter avec le compte Google qui a accès au Sheet et à Gmail
-- Accepter les permissions demandées (Sheets + Gmail)
-- Une fois validé, `token.json` est créé à la racine
+- A browser window opens
+- Log in with the Google account that owns the Sheet and Gmail
+- Accept the requested permissions (Sheets + Gmail)
+- Once done, `token.json` is created at the project root
 
-> Si erreur "Access blocked" : vérifier que ton email est dans les **Test users** (étape 3a).
+> If you get "Access blocked": make sure your email is in **Test users** (step 3a).
 
 ---
 
-## 7. Scopes autorisés
+## 7. OAuth Scopes
 
-Le projet demande ces scopes OAuth :
+The project requests these scopes:
 
-| Scope | Usage |
+| Scope | Purpose |
 |---|---|
-| `spreadsheets` | Lire/écrire le Google Sheet |
-| `gmail.compose` | Créer des brouillons Gmail |
-| `gmail.readonly` | Lire les mails reçus (détection de réponses) |
+| `spreadsheets` | Read/write the Google Sheet |
+| `gmail.compose` | Create Gmail drafts |
+| `gmail.readonly` | Read received emails (reply detection) |
 
 ---
 
-## 8. Lancer le projet
+## 8. Start the Project
 
 ```bash
 docker compose up -d
 ```
 
-Vérifier que l'API répond :
+Verify the API is running:
 
 ```bash
 curl http://localhost:8000/docs
@@ -137,11 +137,11 @@ curl http://localhost:8000/docs
 
 ---
 
-## Re-authentification
+## Re-authentication
 
-Nécessaire si :
-- Tu as modifié les scopes dans le code
-- Le `token.json` est corrompu ou expiré sans refresh token valide
+Required if:
+- You changed the OAuth scopes in the code
+- `token.json` is corrupted or expired without a valid refresh token
 
 ```bash
 rm token.json
@@ -150,12 +150,12 @@ python -c "from api.sheets import get_credentials; get_credentials()"
 
 ---
 
-## Erreurs courantes
+## Common Errors
 
-| Erreur | Cause | Fix |
+| Error | Cause | Fix |
 |---|---|---|
-| `Access blocked: This app's request is invalid` | Email pas dans Test users | Ajouter dans OAuth consent screen → Test users |
-| `Token has been expired or revoked` | Token invalide | Supprimer `token.json` → re-auth |
-| `The caller does not have permission` | API pas activée | Activer Sheets API ou Gmail API dans la console |
-| `invalid_grant` | `credentials.json` mauvais projet | Re-télécharger depuis la console |
-| `Quota exceeded` | Trop d'appels API | Attendre ou réduire la fréquence des checks |
+| `Access blocked: This app's request is invalid` | Email not in Test users | Add it in OAuth consent screen → Test users |
+| `Token has been expired or revoked` | Invalid token | Delete `token.json` → re-auth |
+| `The caller does not have permission` | API not enabled | Enable Sheets API or Gmail API in the console |
+| `invalid_grant` | Wrong `credentials.json` | Re-download from the console |
+| `Quota exceeded` | Too many API calls | Wait or reduce check frequency |
