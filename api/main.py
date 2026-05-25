@@ -4,7 +4,8 @@ from typing import Optional
 
 import anthropic
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi.security import APIKeyHeader
 
 import api.gmail as gmail_module
 import api.sheets as sheets
@@ -22,6 +23,17 @@ from api.models import (
 load_dotenv()
 
 app = FastAPI(title="Job Tracker API", version="1.0.0")
+
+_api_key_header = APIKeyHeader(name="X-API-Secret", auto_error=False)
+
+
+def verify_secret(key: str = Security(_api_key_header)):
+    secret = os.environ.get("API_SECRET")
+    if secret and key != secret:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+_auth = Depends(verify_secret)
 
 _anthropic_client: Optional[anthropic.Anthropic] = None
 
@@ -49,17 +61,17 @@ def llm_generate(prompt: str) -> str:
 
 
 @app.post("/candidatures", response_model=Candidature, status_code=201)
-def create_candidature(data: CandidatureCreate):
+def create_candidature(data: CandidatureCreate, _=_auth):
     return sheets.add_candidature(data)
 
 
 @app.get("/candidatures", response_model=list[Candidature])
-def list_all():
+def list_all(_=_auth):
     return sheets.list_candidatures()
 
 
 @app.get("/candidatures/pipeline", response_model=list[PipelineEntry])
-def pipeline():
+def pipeline(_=_auth):
     all_c = sheets.list_candidatures()
     groups: dict[str, list[str]] = {}
     for c in all_c:
@@ -75,7 +87,7 @@ def pipeline():
 
 
 @app.get("/candidatures/relances", response_model=list[RelanceAlert])
-def get_relances():
+def get_relances(_=_auth):
     today = date.today()
     relances = sheets.get_relances()
     alerts = []
@@ -93,7 +105,7 @@ def get_relances():
 
 
 @app.get("/candidatures/replies", response_model=list[ReplyAlert])
-def get_replies():
+def get_replies(_=_auth):
     active = [
         c for c in sheets.list_candidatures()
         if c.statut in (Statut.envoye, Statut.relance) and c.contact_email
@@ -102,7 +114,7 @@ def get_replies():
 
 
 @app.get("/candidatures/{candidature_id}", response_model=Candidature)
-def get_one(candidature_id: int):
+def get_one(candidature_id: int, _=_auth):
     c = sheets.get_candidature(candidature_id)
     if not c:
         raise HTTPException(status_code=404, detail="Candidature non trouvée")
@@ -110,7 +122,7 @@ def get_one(candidature_id: int):
 
 
 @app.put("/candidatures/{candidature_id}/statut", response_model=Candidature)
-def update_statut(candidature_id: int, data: CandidatureUpdate):
+def update_statut(candidature_id: int, data: CandidatureUpdate, _=_auth):
     c = sheets.update_statut(candidature_id, data.statut)
     if not c:
         raise HTTPException(status_code=404, detail="Candidature non trouvée")
@@ -118,7 +130,7 @@ def update_statut(candidature_id: int, data: CandidatureUpdate):
 
 
 @app.post("/candidatures/{candidature_id}/draft", response_model=DraftResponse)
-def create_draft(candidature_id: int):
+def create_draft(candidature_id: int, _=_auth):
     c = sheets.get_candidature(candidature_id)
     if not c:
         raise HTTPException(status_code=404, detail="Candidature non trouvée")
