@@ -2,6 +2,8 @@ services:
   claude-proxy:
     image: node:20-alpine
     command: sh -c "npm install -g @anthropic-ai/claude-code claude-max-api-proxy && claude-max-api"
+    environment:
+    - HOST=0.0.0.0
     volumes:
       - ~/.claude:/root/.claude:ro,z
     ports:
