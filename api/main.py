@@ -40,11 +40,15 @@ _anthropic_client: Optional[anthropic.Anthropic] = None
 
 def get_llm_client():
     global _anthropic_client
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key or api_key == "your_anthropic_api_key_here":
+    base_url = os.environ.get("ANTHROPIC_BASE_URL")
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "dummy")
+    if not base_url and (not api_key or api_key == "your_anthropic_api_key_here"):
         return None
     if _anthropic_client is None:
-        _anthropic_client = anthropic.Anthropic(api_key=api_key)
+        kwargs = {"api_key": api_key}
+        if base_url:
+            kwargs["base_url"] = base_url
+        _anthropic_client = anthropic.Anthropic(**kwargs)
     return _anthropic_client
 
 
