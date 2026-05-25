@@ -43,6 +43,7 @@ services:
       - openclaw-auth:/home/node/.config/openclaw
     environment:
       - OPENCLAW_GATEWAY_URL=ws://openclaw-gateway:18789
+      - OPENCLAW_ALLOW_INSECURE_PRIVATE_WS=1
     depends_on:
       - openclaw-gateway
     profiles:
