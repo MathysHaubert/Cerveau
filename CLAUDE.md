@@ -43,7 +43,7 @@ job-tracker/
 
 ## Statuts candidature
 
-`envoyé` → `relancé` → `entretien` → `offre` → `refus` / `abandonné`
+`à contacter` → `envoyé` → `relancé` → `entretien` → `offre` → `refus` / `abandonné`
 
 ## Google Sheets schéma (colonnes dans l'ordre)
 

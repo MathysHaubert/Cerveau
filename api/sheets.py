@@ -5,7 +5,6 @@ import gspread
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
 
 from api.models import Candidature, CandidatureCreate, Statut
 
@@ -21,12 +20,19 @@ SHEET_HEADERS = [
     "Date dernière action", "Prochaine relance", "Délai relance (jours)"
 ]
 
+_creds_cache: Optional[Credentials] = None
+_sheet_cache: Optional[gspread.Worksheet] = None
+
 
 def get_credentials() -> Credentials:
-    creds = None
+    global _creds_cache
     token_path = os.environ.get("TOKEN_PATH", "token.json")
     creds_path = os.environ.get("CREDENTIALS_PATH", "credentials.json")
 
+    if _creds_cache and _creds_cache.valid:
+        return _creds_cache
+
+    creds = None
     if os.path.exists(token_path):
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
 
@@ -39,20 +45,24 @@ def get_credentials() -> Credentials:
         with open(token_path, "w") as f:
             f.write(creds.to_json())
 
+    _creds_cache = creds
     return creds
 
 
-def get_sheet():
+def get_sheet() -> gspread.Worksheet:
+    global _sheet_cache
+    if _sheet_cache is not None:
+        return _sheet_cache
+
     creds = get_credentials()
     gc = gspread.authorize(creds)
     sheet_id = os.environ["SHEET_ID"]
-    sh = gc.open_by_key(sheet_id)
-    worksheet = sh.sheet1
+    worksheet = gc.open_by_key(sheet_id).sheet1
 
-    # Init headers if empty
     if not worksheet.row_values(1):
         worksheet.append_row(SHEET_HEADERS)
 
+    _sheet_cache = worksheet
     return worksheet
 
 
@@ -150,13 +160,14 @@ def update_statut(candidature_id: int, statut: Statut) -> Optional[Candidature]:
         return None
 
     today = date.today()
-    ws.update_cell(row_num, 5, statut.value)
-    ws.update_cell(row_num, 10, today.isoformat())
-
-    # Recalculate next follow-up if still active
+    updates = [
+        {"range": f"E{row_num}", "values": [[statut.value]]},
+        {"range": f"J{row_num}", "values": [[today.isoformat()]]},
+    ]
     if statut in (Statut.envoye, Statut.relance):
         prochaine = today + timedelta(days=c.delai_relance_jours)
-        ws.update_cell(row_num, 11, prochaine.isoformat())
+        updates.append({"range": f"K{row_num}", "values": [[prochaine.isoformat()]]})
+    ws.batch_update(updates)
 
     c.statut = statut
     c.date_derniere_action = today
@@ -169,7 +180,7 @@ def get_relances() -> list[Candidature]:
     return [
         c for c in all_c
         if c.statut in (Statut.envoye, Statut.relance)
-        and c.prochaine_relance
+        and c.prochaine_relance is not None
         and c.prochaine_relance <= today
     ]
 
@@ -187,6 +198,8 @@ def mark_relance_sent(candidature_id: int):
         return
     today = date.today()
     prochaine = today + timedelta(days=c.delai_relance_jours)
-    ws.update_cell(row_num, 5, Statut.relance.value)
-    ws.update_cell(row_num, 10, today.isoformat())
-    ws.update_cell(row_num, 11, prochaine.isoformat())
+    ws.batch_update([
+        {"range": f"E{row_num}", "values": [[Statut.relance.value]]},
+        {"range": f"J{row_num}", "values": [[today.isoformat()]]},
+        {"range": f"K{row_num}", "values": [[prochaine.isoformat()]]},
+    ])

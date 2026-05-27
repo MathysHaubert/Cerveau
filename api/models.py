@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class Statut(str, Enum):
+    a_contacter = "à contacter"
     envoye = "envoyé"
     relance = "relancé"
     entretien = "entretien"
