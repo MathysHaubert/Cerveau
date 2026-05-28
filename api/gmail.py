@@ -1,7 +1,7 @@
 import base64
-import os
 from email.mime.text import MIMEText
 
+from fastapi import HTTPException
 from googleapiclient.discovery import build
 
 from api.sheets import get_credentials
@@ -13,25 +13,47 @@ def get_gmail_service():
     return build("gmail", "v1", credentials=creds)
 
 
-def _encode_message(to: str, subject: str, body: str) -> dict:
+DRAFT_LABEL = "candidature 2k26"
+
+
+def _get_or_create_label(service, name: str) -> str:
+    labels = service.users().labels().list(userId="me").execute().get("labels", [])
+    for label in labels:
+        if label["name"].lower() == name.lower():
+            return label["id"]
+    created = service.users().labels().create(
+        userId="me",
+        body={"name": name, "labelListVisibility": "labelShow", "messageListVisibility": "show"},
+    ).execute()
+    return created["id"]
+
+
+def _encode_message(to: str, subject: str, body: str, label_ids: list[str] | None = None) -> dict:
     msg = MIMEText(body, "plain", "utf-8")
     msg["to"] = to
     msg["subject"] = subject
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-    return {"message": {"raw": raw}}
+    message: dict = {"raw": raw}
+    if label_ids:
+        message["labelIds"] = label_ids
+    return {"message": message}
 
 
 def create_draft(candidature: Candidature, body: str) -> DraftResponse:
     service = get_gmail_service()
 
-    to = candidature.contact_email or ""
+    if not candidature.contact_email:
+        raise HTTPException(status_code=400, detail="Email du contact manquant pour créer un brouillon")
+    to = candidature.contact_email
     subject = f"Relance candidature – {candidature.poste} chez {candidature.entreprise}"
 
-    draft_body = _encode_message(to, subject, body)
+    label_id = _get_or_create_label(service, DRAFT_LABEL)
+    draft_body = _encode_message(to, subject, body, label_ids=[label_id])
     draft = service.users().drafts().create(userId="me", body=draft_body).execute()
 
     draft_id = draft["id"]
-    gmail_link = f"https://mail.google.com/mail/#drafts/{draft_id}"
+    message_id = draft.get("message", {}).get("id", "")
+    gmail_link = f"https://mail.google.com/mail/#drafts/{message_id}" if message_id else "https://mail.google.com/mail/#drafts"
 
     return DraftResponse(
         draft_id=draft_id,

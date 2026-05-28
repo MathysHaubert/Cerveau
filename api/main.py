@@ -2,7 +2,7 @@ import os
 from datetime import date
 from typing import Optional
 
-import anthropic
+import google.generativeai as genai
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.security import APIKeyHeader
@@ -35,33 +35,29 @@ def verify_secret(key: str = Security(_api_key_header)):
 
 _auth = Depends(verify_secret)
 
-_anthropic_client: Optional[anthropic.Anthropic] = None
+_gemini_model: Optional[genai.GenerativeModel] = None
 
 
-def get_llm_client():
-    global _anthropic_client
-    base_url = os.environ.get("ANTHROPIC_BASE_URL")
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "dummy")
-    if not base_url and (not api_key or api_key == "your_anthropic_api_key_here"):
+def get_llm_client() -> Optional[genai.GenerativeModel]:
+    global _gemini_model
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key or api_key == "your_gemini_api_key_here":
         return None
-    if _anthropic_client is None:
-        kwargs = {"api_key": api_key}
-        if base_url:
-            kwargs["base_url"] = base_url
-        _anthropic_client = anthropic.Anthropic(**kwargs)
-    return _anthropic_client
+    if _gemini_model is None:
+        genai.configure(api_key=api_key)
+        _gemini_model = genai.GenerativeModel("gemini-2.0-flash")
+    return _gemini_model
 
 
-def llm_generate(prompt: str) -> str:
-    client = get_llm_client()
-    if not client:
+def llm_generate(prompt: str) -> Optional[str]:
+    model = get_llm_client()
+    if not model:
         return None
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=512,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return message.content[0].text
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception:
+        return None
 
 
 @app.post("/candidatures", response_model=Candidature, status_code=201)
@@ -141,8 +137,5 @@ def create_draft(candidature_id: int, _=_auth):
 
     body = gmail_module.generate_email_body(c, llm_client=llm_generate)
     result = gmail_module.create_draft(c, body)
-
-    # Mark as relancé in sheet
     sheets.mark_relance_sent(candidature_id)
-
     return result

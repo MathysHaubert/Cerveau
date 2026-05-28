@@ -18,6 +18,7 @@ class CandidatureCreate(BaseModel):
     entreprise: str
     poste: str
     date_envoi: date
+    statut: Optional[Statut] = None
     contact_nom: Optional[str] = None
     contact_email: Optional[str] = None
     contact_linkedin: Optional[str] = None

@@ -22,6 +22,7 @@ API : `http://api:8000` — header obligatoire : `X-API-Secret: {API_SECRET}`
 ## Règles
 
 - Brouillons Gmail créés, JAMAIS envoyés auto
+- Brouillons taggés automatiquement "candidature 2k26" dans Gmail
 - Candidature introuvable par nom → proposer liste
 - Délai relance défaut : 7j (configurable par ligne)
 

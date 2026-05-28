@@ -22,6 +22,14 @@ SHEET_HEADERS = [
 
 _creds_cache: Optional[Credentials] = None
 _sheet_cache: Optional[gspread.Worksheet] = None
+_sheet_id_cache: Optional[str] = None
+
+
+def invalidate_cache():
+    global _creds_cache, _sheet_cache, _sheet_id_cache
+    _creds_cache = None
+    _sheet_cache = None
+    _sheet_id_cache = None
 
 
 def get_credentials() -> Credentials:
@@ -50,19 +58,20 @@ def get_credentials() -> Credentials:
 
 
 def get_sheet() -> gspread.Worksheet:
-    global _sheet_cache
-    if _sheet_cache is not None:
+    global _sheet_cache, _sheet_id_cache
+    sheet_id = os.environ["SHEET_ID"]
+    if _sheet_cache is not None and _sheet_id_cache == sheet_id:
         return _sheet_cache
 
     creds = get_credentials()
     gc = gspread.authorize(creds)
-    sheet_id = os.environ["SHEET_ID"]
     worksheet = gc.open_by_key(sheet_id).sheet1
 
     if not worksheet.row_values(1):
         worksheet.append_row(SHEET_HEADERS)
 
     _sheet_cache = worksheet
+    _sheet_id_cache = sheet_id
     return worksheet
 
 
@@ -102,12 +111,13 @@ def add_candidature(data: CandidatureCreate) -> Candidature:
     today = date.today().isoformat()
     prochaine = (data.date_envoi + timedelta(days=data.delai_relance_jours)).isoformat()
 
+    statut = data.statut if data.statut is not None else Statut.a_contacter
     row = [
         next_id,
         data.entreprise,
         data.poste,
         data.date_envoi.isoformat(),
-        Statut.envoye.value,
+        statut.value,
         data.contact_nom or "",
         data.contact_email or "",
         data.contact_linkedin or "",
@@ -123,7 +133,7 @@ def add_candidature(data: CandidatureCreate) -> Candidature:
         entreprise=data.entreprise,
         poste=data.poste,
         date_envoi=data.date_envoi,
-        statut=Statut.envoye,
+        statut=statut,
         contact_nom=data.contact_nom,
         contact_email=data.contact_email,
         contact_linkedin=data.contact_linkedin,
