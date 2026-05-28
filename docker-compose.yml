@@ -17,14 +17,10 @@ services:
       - ./openclaw-skill/job_tracker.md:/home/node/.openclaw/skills/job_tracker.md:z
       - ./openclaw-skill/openclaw.config.json5:/home/node/.openclaw/config.json5:z
       - ~/.claude/.credentials.json:/home/node/.claude/.credentials.json:ro,z
-    environment:
-      - OPENAI_API_KEY=not-needed
-      - OPENAI_BASE_URL=http://claude-proxy:3456/v1
     ports:
       - "18789:18789"
     depends_on:
       - api
-      - claude-proxy
     restart: unless-stopped
 
   openclaw-cli:
